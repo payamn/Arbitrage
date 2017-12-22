@@ -11,33 +11,31 @@ def find_arbitrage_binance(base_currency="USDT"):
     pprint = pp.pprint
 
     bin = ccxt.binance()
-    bin.load_markets()
-    all_markets = bin.markets
+    all_markets = bin.load_markets()
+    # all_markets = bin.markets
 
     tree_markets = {}
     all_tickers = bin.public_get_ticker_allbooktickers()
     all_tickers = {i['symbol']: i for i in all_tickers}
 
     for markets in all_markets:
-        market1, market2 = tuple(markets.split("/"))
-        market1 = market1 if market1 != "BCH" else "BCC"
-        market2 = market2 if market2 != "BCH" else "BCC"
-        if market1 not in tree_markets:
-            tree_markets[market1] = []
-        if market2 not in tree_markets:
-            tree_markets[market2] = []
+        base_market = all_markets[markets]['base']
+        quote_market = all_markets[markets]['quote']
 
-        symbol1 = market1 + market2
-        symbol2 = market2 + market1
-        ticker = all_tickers[symbol1] if symbol1 in all_tickers else all_tickers[symbol2]
+        if base_market not in tree_markets:
+            tree_markets[base_market] = []
+        if quote_market not in tree_markets:
+            tree_markets[quote_market] = []
+
+        ticker = all_tickers[all_markets[markets]['id']]
         if float(ticker["askPrice"]) == 0 or float(ticker["bidPrice"]) == 0:
             continue
         pprint(ticker)
-        tree_markets[market1].append((
-            market2, float(ticker["bidPrice"]), float(ticker["bidQty"])
+        tree_markets[base_market].append((
+            quote_market, float(ticker["bidPrice"]), float(ticker["bidQty"])
         ))
-        tree_markets[market2].append((
-            market1, 1.0 / float(ticker["askPrice"]), float(ticker["askQty"])
+        tree_markets[quote_market].append((
+            base_market, 1.0 / float(ticker["askPrice"]), float(ticker["askQty"])
         ))
 
     # build tree
@@ -83,7 +81,7 @@ def find_arbitrage_binance(base_currency="USDT"):
 
 def main():
     while True:
-        find_arbitrage_binance('ETH')
+        find_arbitrage_binance('USDT')
         time.sleep(1)
 
 if __name__ == "__main__":
