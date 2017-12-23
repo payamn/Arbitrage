@@ -34,13 +34,13 @@ def find_arbitrage_binance(base_currency="USDT"):
         tree_markets[base_market].append({
             'market': quote_market,
             'price': float(ticker["bidPrice"]),
-            'qty': float(ticker["bidQty"])
+            'qty': float(ticker["bidQty"]),
         })
 
         tree_markets[quote_market].append({
             'market': base_market,
             'price': 1.0 / float(ticker["askPrice"]),
-            'qty': float(ticker["askQty"])
+            'qty': float(ticker["askQty"]) * float(ticker["askPrice"])
         })
 
     # build tree
@@ -98,7 +98,7 @@ def find_arbitrage_binance(base_currency="USDT"):
                 str(node_count - 1),
                 str(node_count),
                 "%.3g"%(transition_price[i - 1])
-                +","
+                +", lim: "
                 +"%.3g"%(transition_quantity[i - 1])
             )
             node_count += 1
