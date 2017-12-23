@@ -31,36 +31,65 @@ def find_arbitrage_binance(base_currency="USDT"):
         if float(ticker["askPrice"]) == 0 or float(ticker["bidPrice"]) == 0:
             continue
         pprint(ticker)
-        tree_markets[base_market].append((
-            quote_market, float(ticker["bidPrice"]), float(ticker["bidQty"])
-        ))
-        tree_markets[quote_market].append((
-            base_market, 1.0 / float(ticker["askPrice"]), float(ticker["askQty"])
-        ))
+        tree_markets[base_market].append({
+            'market': quote_market,
+            'price': float(ticker["bidPrice"]),
+            'qty': float(ticker["bidQty"])
+        })
+
+        tree_markets[quote_market].append({
+            'market': base_market,
+            'price': 1.0 / float(ticker["askPrice"]),
+            'qty': float(ticker["askQty"])
+        })
 
     # build tree
-    # item in frontier are tuple of path, price of transition and quantity
-    frontier = deque([([base_currency],[], [])])
+    # item in frontier are dictionary of path, price of transition and quantity
+    frontier = deque([{
+        'path': [base_currency],
+        'price': [],
+        'qty': []
+    }])
     max_depth = 5
     valid_path = []
 
     while len(frontier):
-        path, transition_price, transition_quantity = frontier.popleft()
+        current_node = frontier.popleft()
+        path = current_node['path']
+        transition_price = current_node['price']
+        transition_quantity = current_node['qty']
+
         if len(path) > 2 and path[-1] == base_currency:
-            valid_path.append((path, transition_price, transition_quantity))
+            valid_path.append(current_node)
         if len(path) >= max_depth:
             continue
         node = path[-1]
-        for children, price, quantity in tree_markets[node]:
-            frontier.append((path + [children], transition_price + [price], transition_quantity + [quantity]))
+        for child_market in tree_markets[node]:
+            children = child_market['market']
+            price = child_market['price']
+            quantity = child_market['qty']
+
+            frontier.append({
+                'path': path + [children],
+                'price': transition_price + [price],
+                'qty': transition_quantity + [quantity]
+            })
 
     tree = Digraph()
     node_count = 0
 
-    for path, transition_price, transition_quantity in valid_path:
-        path_cost = reduce(lambda cost, x: cost * x * 0.999, transition_price, 1.0)
-        if path_cost < 1.0:
-            continue
+    # TODO: deal with the BNB discount
+    find_path_cost = lambda path_obj: reduce(lambda cost, x: cost * x * 0.9995, path_obj['price'], 1.0)
+    valid_path = list(filter(lambda path_obj: find_path_cost(path_obj) > 1.0, valid_path))
+    valid_path = sorted(valid_path, key=lambda path_obj: find_path_cost(path_obj), reverse=True)
+
+    for path_obj in valid_path:
+        path = path_obj['path']
+        transition_price = path_obj['price']
+        transition_quantity = path_obj['qty']
+
+        path_cost = find_path_cost(path_obj)
+
         tree.node(str(node_count), path[0])
         node_count += 1
         for i in range(1, len(path)):
@@ -81,7 +110,7 @@ def find_arbitrage_binance(base_currency="USDT"):
 
 def main():
     while True:
-        find_arbitrage_binance('USDT')
+        find_arbitrage_binance('ETH')
         time.sleep(1)
 
 if __name__ == "__main__":
