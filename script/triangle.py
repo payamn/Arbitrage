@@ -44,6 +44,9 @@ def find_arbitrage_binance(base_currency="USDT", max_investment=0.00):
 
     bin = ccxt.binance()
     all_markets = bin.load_markets()
+    bit = ccxt.bitfinex2()
+    bit.load_markets()
+    bit.fetch_tickers()
     # all_markets = bin.markets
 
     tree_markets = {}
